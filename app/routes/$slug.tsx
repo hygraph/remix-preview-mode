@@ -6,6 +6,8 @@ import { RichText } from "@graphcms/rich-text-react-renderer";
 import type { ElementNode } from "@graphcms/rich-text-types";
 
 import { graphcms } from "~/lib/graphcms.server";
+import { isPreviewMode } from "~/utils/preview-mode.server";
+import { PreviewBanner } from "~/components/preview-banner";
 
 const getArticleQuery = gql`
   query Article($url: String!) {
@@ -21,10 +23,10 @@ const getArticleQuery = gql`
   }
 `;
 
-export const loader: LoaderFunction = async ({ params }) => {
+export const loader: LoaderFunction = async ({ params, request }) => {
   const { slug } = params;
 
-  const preview = true;
+  const preview = await isPreviewMode(request);
 
   const API_TOKEN = preview
     ? process.env.GRAPHCMS_DEV_TOKEN
@@ -40,7 +42,10 @@ export const loader: LoaderFunction = async ({ params }) => {
     }
   );
 
-  return json(data);
+  return json({
+    ...data,
+    isInPreview: preview,
+  });
 };
 
 type Article = {
@@ -54,13 +59,16 @@ type Article = {
 
 type LoaderData = {
   article: Article;
+  isInPreview: boolean;
 };
 
 export default function Index() {
-  const { article } = useLoaderData<LoaderData>();
+  const { article, isInPreview } = useLoaderData<LoaderData>();
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.4" }}>
+      {isInPreview && <PreviewBanner />}
+
       <h1>{article.title}</h1>
       <RichText content={article.content.json} />
     </div>

@@ -2,8 +2,10 @@ import type { LoaderFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { gql } from "graphql-request";
+import { PreviewBanner } from "~/components/preview-banner";
 
 import { graphcms } from "~/lib/graphcms.server";
+import { isPreviewMode } from "~/utils/preview-mode.server";
 
 const allArticlesQuery = gql`
   {
@@ -16,8 +18,8 @@ const allArticlesQuery = gql`
   }
 `;
 
-export const loader: LoaderFunction = async () => {
-  const preview = true;
+export const loader: LoaderFunction = async ({ request }) => {
+  const preview = await isPreviewMode(request);
 
   const API_TOKEN = preview
     ? process.env.GRAPHCMS_DEV_TOKEN
@@ -32,7 +34,8 @@ export const loader: LoaderFunction = async () => {
   );
 
   return json({
-    articles: data.articles,
+    ...data,
+    isInPreview: preview,
   });
 };
 
@@ -45,13 +48,16 @@ type Article = {
 
 type LoaderData = {
   articles: Article[];
+  isInPreview: boolean;
 };
 
 export default function Index() {
-  const { articles } = useLoaderData<LoaderData>();
+  const { articles, isInPreview } = useLoaderData<LoaderData>();
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.4" }}>
+      {isInPreview && <PreviewBanner />}
+
       <h1>Welcome to Remix</h1>
       <ul>
         {articles.map((article) => (
